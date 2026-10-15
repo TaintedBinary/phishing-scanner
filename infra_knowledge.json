@@ -1,0 +1,7 @@
+{
+  "comment": "本地已知恶意基础设施知识库。默认为空，不会产生任何 G7 强证据；需要时手工填入。",
+  "bad_ips": [],
+  "bad_asns": [],
+  "bad_domains": [],
+  "suspicious_cert_domains": []
+}
