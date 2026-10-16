@@ -2,7 +2,7 @@
 
 A phishing URL discovery and detection tool for URL intelligence, page analysis, brand impersonation detection, and evidence-based risk scoring.
 
-[中文文档](#中文文档)
+[简体中文](README.zh-CN.md)
 
 ## Features
 
@@ -44,39 +44,6 @@ The default search workflow reads `keywords.json`. The file can be a JSON array 
 
 Use `--keywords-config` if your keyword file has another name or location.
 
-## Usage
-
-```bash
-# Search all configured keywords
-python phishing_detector.py
-
-# Search for a specific keyword
-python phishing_detector.py -k "bank login"
-
-# Select search engines
-python phishing_detector.py -k "account verification" -e bing baidu
-
-# Look up ICP filing information for one URL
-python phishing_detector.py --icp https://example.com
-
-# Look up URLs from a file
-python phishing_detector.py --icp urls.txt
-
-# Scan one URL directly
-python phishing_detector.py --url https://example.com
-
-# Scan URLs from a file and save results under output/
-python phishing_detector.py --url urls.txt --output
-
-# Print JSON output
-python phishing_detector.py --url https://example.com --json
-
-# Evaluate a labeled dataset
-python phishing_detector.py --evaluate labeled_urls.json
-
-# Build the infrastructure knowledge base
-python phishing_detector.py --build-infra
-```
 
 ### CLI options
 
@@ -153,12 +120,6 @@ The project supports a local ICP lookup service and can use the 4759.cn API as a
 ICP_SERVICE.fallback_api.api_key
 ```
 
-Do not commit a real API key to a public repository. The current implementation does not automatically read this key from an environment variable.
-
-### Local URL database
-
-The local URL database is configured in `providers.py` and commonly points to an external `urldb` directory. If it is unavailable, the remaining analyses can still run, but local blocklist routing will not be available.
-
 ### Infrastructure knowledge base
 
 Build or update the infrastructure knowledge base with:
@@ -213,135 +174,3 @@ phishing-scanner/
     ├── scoring/               # Risk and evidence scoring
     └── utils/                 # Shared utilities
 ```
-
-## Development and Testing
-
-Check Python syntax:
-
-```bash
-python -m compileall -q phishing_detector.py providers.py detector tools
-```
-
-Run the regression tests:
-
-```bash
-python -m pytest tests -q
-```
-
-An evaluation dataset can be a JSON array or an object containing a `samples` array. Each record must contain `url` and `label`. Supported labels include `phishing`/`safe`, `malicious`/`benign`, `true`/`false`, and `1`/`0`.
-
-Before pushing changes, run the syntax check and test suite, then review the diff for credentials and local-only files.
-
----
-
-## 中文文档
-
-钓鱼网址发现与检测工具，支持搜索引擎发现、URL 检测、页面分析、品牌仿冒识别、ICP 备案查询、恶意基础设施关联和基于证据的风险评分。
-
-### 功能
-
-- 从多个搜索引擎发现待检测 URL。
-- 使用本地恶意网址库和白名单进行前置分流。
-- 分析域名、URL、页面内容、表单、链接、脚本、跳转和下载行为。
-- 检测品牌仿冒、同形字符、混合脚本、Punycode 和伪造官方子域。
-- 识别密码、验证码、支付卡、身份信息、私钥和助记词采集。
-- 检测敏感表单外传、外域请求、外部 iframe、动态跳转和危险下载。
-- 集成 WHOIS、RDAP、DNS、ASN、证书透明度和 ICP 备案信息。
-- 使用 V2 证据引擎生成可解释的风险结论。
-
-### 快速开始
-
-建议使用 Python 3.9 或更高版本：
-
-```bash
-python -m pip install -r requirements.txt
-```
-
-默认搜索模式需要 `keywords.json`。配置文件可以是数组，也可以是包含 `keywords` 字段的对象：
-
-```json
-{
-  "keywords": [
-    "银行登录",
-    "账号验证",
-    "在线客服"
-  ]
-}
-```
-
-如果关键词文件名称或路径不同，可以使用 `--keywords-config` 指定。
-
-### 常用命令
-
-```bash
-# 搜索全部关键词
-python phishing_detector.py
-
-# 搜索指定关键词
-python phishing_detector.py -k "银行登录"
-
-# 指定搜索引擎
-python phishing_detector.py -k "账号验证" -e bing baidu
-
-# 查询单个 URL 的 ICP 备案
-python phishing_detector.py --icp https://example.com
-
-# 检测单个 URL
-python phishing_detector.py --url https://example.com
-
-# 检测 URL 文件并保存结果
-python phishing_detector.py --url urls.txt --output
-
-# 输出 JSON
-python phishing_detector.py --url https://example.com --json
-
-# 评估标注数据集
-python phishing_detector.py --evaluate labeled_urls.json
-
-# 构建基础设施知识库
-python phishing_detector.py --build-infra
-```
-
-### 风险结论
-
-V2 证据引擎将信号归入以下证据组：
-
-- `G1`：信誉和黑名单
-- `G2`：域名和 URL
-- `G3`：品牌仿冒
-- `G4`：页面内容
-- `G5`：凭据和敏感信息采集
-- `G6`：外传、跳转和下载行为
-- `G7`：基础设施和注册信息
-
-主要 verdict 包括：`SAFE`、`UNKNOWN`、`SUSPICIOUS`、`HIGH_RISK`、`PHISHING`、`MALWARE` 和 `SCAM`。直接检测模式还会按“已拦截”“白名单”“未拦截”分类输出。
-
-品牌相似度本身不会直接构成拦截；本地恶意库命中、敏感信息采集和外域提交等直接证据优先级更高。
-
-### 配置和注意事项
-
-主要配置文件是 `providers.py`、`brands.json`、`evidence_rules.json`、`risk_rules.json`、`whitelist.txt`、`infra_knowledge.json` 和 `keywords.json`。
-
-ICP fallback API key 配置项为：
-
-```text
-ICP_SERVICE.fallback_api.api_key
-```
-
-不要把真实 API key 提交到公开仓库。当前实现不会自动从环境变量读取该 key。
-
-本地恶意 URL 库通常位于项目外部的 `urldb` 目录，由 `providers.py` 配置。缺少该目录时，其他分析仍可运行，但本地黑名单前置分流不会生效。
-
-URL 检测默认拒绝回环、私有、链路本地、未分配和其他非公网地址；最多跟随 5 次重定向，每次都会重新校验目标地址；响应正文最多读取 512 KiB，主要解析 HTML/XHTML。
-
-### 开发与测试
-
-```bash
-# 检查 Python 语法
-python -m compileall -q phishing_detector.py providers.py detector tools
-
-# 运行回归测试
-python -m pytest tests -q
-```
-
-评估数据集可以是 JSON 数组，也可以是包含 `samples` 数组的对象。每条记录需要包含 `url` 和 `label`，支持 `phishing`/`safe`、`malicious`/`benign`、`true`/`false` 和 `1`/`0`。
