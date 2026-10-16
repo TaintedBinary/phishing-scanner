@@ -52,10 +52,12 @@ URL_DATABASE = {
     # 本地网址库的根目录路径
     "root": " ",
     # 每一项可以是相对 root 的目录，也可以是文件
+    # 仅用于扫描时的本地黑名单前置分流
     "subdirs": [
         " ",
     ],
     # 需要单独指定的文件，相对于 root；也支持绝对路径
+    # 仅用于 --build-infra 派生基础设施知识库
     "files": [
         # "malurl/selected-list.txt",
     ],

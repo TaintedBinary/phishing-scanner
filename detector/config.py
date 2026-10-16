@@ -244,7 +244,9 @@ def load_url_database_config(path):
     if explicit_paths is not None:
         if isinstance(explicit_paths, str):
             explicit_paths = [explicit_paths]
-        config['paths'] = [resolve_project_path(item) for item in explicit_paths]
+        resolved = [resolve_project_path(item) for item in explicit_paths]
+        config['paths'] = resolved
+        config['file_paths'] = resolved
         return config
 
     root = resolve_project_path(config.get('root', ''))
@@ -255,23 +257,27 @@ def load_url_database_config(path):
     if isinstance(files, str):
         files = [files]
 
-    # Both `subdirs` and `files` may contain relative paths under `root` or
-    # absolute paths. URLBlocklist handles either a directory or a file.
-    configured_paths = list(subdirs or []) + list(files or [])
-    paths = []
-    seen = set()
-    for item in configured_paths:
-        item = str(item or '').strip()
-        if not item:
-            continue
-        resolved = item if os.path.isabs(item) else os.path.join(root, item)
-        resolved = os.path.normpath(resolved)
-        if resolved not in seen:
-            seen.add(resolved)
-            paths.append(resolved)
+    def resolve_items(items):
+        # Items may be relative to `root` or absolute. URLBlocklist handles
+        # either a directory or a file.
+        resolved = []
+        seen = set()
+        for item in items:
+            item = str(item or '').strip()
+            if not item:
+                continue
+            path = item if os.path.isabs(item) else os.path.join(root, item)
+            path = os.path.normpath(path)
+            if path not in seen:
+                seen.add(path)
+                resolved.append(path)
+        return resolved
 
+    # `subdirs` feeds the pre-analysis blocklist routing; `files` feeds
+    # only --build-infra knowledge-base derivation.
     config['root'] = root
     config['subdirs'] = subdirs
     config['files'] = files
-    config['paths'] = paths
+    config['paths'] = resolve_items(subdirs)
+    config['file_paths'] = resolve_items(files)
     return config

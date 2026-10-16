@@ -10,7 +10,7 @@ from datetime import datetime
 from detector import PhishingDetector
 from detector.config import load_string_list
 from detector.cli.icp import run_icp_query
-from detector.cli.reporting import compact_v2, sort_results
+from detector.cli.reporting import format_brief_results, sort_results
 from detector.cli.search import run_keyword_search
 from detector.evaluation import evaluate_detector, load_labeled_dataset
 
@@ -34,7 +34,6 @@ def build_parser():
     parser.add_argument('query', nargs='?', help='搜索关键词，或 --icp 模式下的 URL/文件路径')
     parser.add_argument('-o', '--output', nargs='?', const=True, default=False,
                         help='保存检测结果到当前目录下的 output 文件夹')
-    parser.add_argument('-j', '--json', action='store_true', help='以JSON格式输出结果')
     parser.add_argument('--search', '-k', nargs='?', const='__all__', default=None,
                         help='兼容旧用法：不带参数时搜索全部关键词，带参数时搜索指定关键词')
     parser.add_argument('--list-keywords', action='store_true', help='列出关键词配置文件中的关键词')
@@ -140,46 +139,41 @@ def output_detection_results(results, args, base_dir):
         try:
             output_dir = os.path.join(os.getcwd(), 'output')
             os.makedirs(output_dir, exist_ok=True)
-            saved_paths = save_split_detection_results(filtered_results, args.json, output_dir)
-            print("结果已保存到:")
-            for path in saved_paths:
-                print(f"  {path}")
+            saved_paths = save_split_detection_results(filtered_results, output_dir)
+            if saved_paths:
+                print("结果已保存到:")
+                for path in saved_paths:
+                    print(f"  {path}")
+            else:
+                print("本次无检测结果，未生成文件")
         except Exception as exc:
             print(f"错误: 保存文件失败 - {exc}")
         return
 
-    output = render_detection_results(filtered_results, args.json)
+    output = render_detection_results(filtered_results)
     print(output)
 
 
-def render_detection_results(results, as_json=False):
-    sorted_results = sort_results(results)
-    if as_json:
-        return json.dumps(
-            [compact_v2(r) for r in sorted_results],
-            ensure_ascii=False, indent=2,
-        )
-    return '\n'.join(
-        json.dumps(compact_v2(r), ensure_ascii=False)
-        for r in sorted_results
-    )
+def render_detection_results(results):
+    return format_brief_results(sort_results(results))
 
 
-def save_split_detection_results(results, as_json=False, output_dir=None):
+def save_split_detection_results(results, output_dir=None):
     output_dir = output_dir or os.path.join(os.getcwd(), 'output')
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    extension = 'json' if as_json else 'txt'
     blocked_results, unblocked_results = split_blocked_results(results)
     files = [
-        (f'blocked_{timestamp}.{extension}', blocked_results),
-        (f'unblocked_{timestamp}.{extension}', unblocked_results),
+        (f'blocked_{timestamp}.txt', blocked_results),
+        (f'unblocked_{timestamp}.txt', unblocked_results),
     ]
 
     saved_paths = []
     for filename, subset in files:
+        if not subset:
+            continue
         filepath = os.path.join(output_dir, filename)
         with open(filepath, 'w', encoding='utf-8') as handle:
-            handle.write(render_detection_results(subset, as_json))
+            handle.write(render_detection_results(subset))
         saved_paths.append(filepath)
     return saved_paths
 
@@ -217,12 +211,13 @@ def run_build_infra(providers_config, dns_lookup=None, asn_lookup=None):
     from detector.policy.url_database import URLBlocklist
 
     url_config = load_url_database_config(providers_config)
-    database = URLBlocklist(url_config['paths'], enabled=url_config['enabled'])
+    database = URLBlocklist(
+        url_config.get('file_paths', []), enabled=url_config.get('enabled', True))
     domains = sorted(database.entries)
     if not domains:
         print('错误: 本地恶意网址库为空，无法派生基础设施知识库')
-        for path in url_config['paths']:
-            print(f'  已配置路径: {path}')
+        for path in url_config.get('file_paths', []):
+            print(f'  已配置文件: {path}')
         return
 
     infra_config = load_infrastructure_config(providers_config)
@@ -314,39 +309,22 @@ def group_url_check_results(results):
     return groups
 
 
-def format_url_check_categories(results, as_json=False):
-    """Group results into 已拦截/白名单/未拦截 and render each as flat JSON lines."""
+def format_url_check_categories(results):
+    """Group results into 已拦截/白名单/未拦截 and render each as brief lines."""
     groups = group_url_check_results(results)
-    if as_json:
-        return json.dumps(
-            {
-                category: [compact_v2(r) for r in sort_results(groups[category])]
-                for category in URL_CHECK_CATEGORIES
-            },
-            ensure_ascii=False, indent=2,
-        )
     sections = []
     for category in URL_CHECK_CATEGORIES:
         subset = sort_results(groups[category])
+        if not subset:
+            continue
         lines = [f"# {category}网址 ({len(subset)})"]
-        lines.extend(
-            json.dumps(compact_v2(r), ensure_ascii=False) for r in subset
-        )
+        lines.extend(format_brief_result(r) for r in subset)
         sections.append('\n'.join(lines))
     return '\n'.join(sections)
 
 
-def format_url_check_results(results, as_json=False):
-    sorted_results = sort_results(results)
-    if as_json:
-        return json.dumps(
-            [compact_v2(r) for r in sorted_results],
-            ensure_ascii=False, indent=2,
-        )
-    return '\n'.join(
-        json.dumps(compact_v2(r), ensure_ascii=False)
-        for r in sorted_results
-    )
+def format_url_check_results(results):
+    return format_brief_results(sort_results(results))
 
 
 def output_url_check_results(results, args, base_dir):
@@ -354,35 +332,39 @@ def output_url_check_results(results, args, base_dir):
         try:
             output_dir = os.path.join(os.getcwd(), 'output')
             os.makedirs(output_dir, exist_ok=True)
-            saved_paths = save_url_check_results(results, args.json, output_dir)
-            print("结果已保存到:")
-            for path in saved_paths:
-                print(f"  {path}")
+            saved_paths = save_url_check_results(results, output_dir)
+            if saved_paths:
+                print("结果已保存到:")
+                for path in saved_paths:
+                    print(f"  {path}")
+            else:
+                print("本次无检测结果，未生成文件")
         except Exception as exc:
             print(f"错误: 保存文件失败 - {exc}")
         return
 
-    output = format_url_check_categories(results, args.json)
+    output = format_url_check_categories(results)
     print(output)
 
 
-def save_url_check_results(results, as_json=False, output_dir=None):
+def save_url_check_results(results, output_dir=None):
     """Save URL check results split into 已拦截/白名单/未拦截 files.
 
-    Each file contains a single flat sorted JSON-line list (compact_v2).
-    Filenames use ASCII (blocked_/whitelisted_/unblocked_) to stay robust
-    against Windows console encoding issues.
+    Each file contains a single flat sorted brief-line list.  Filenames use
+    ASCII (blocked_/whitelisted_/unblocked_) to stay robust against Windows
+    console encoding issues.  Empty categories produce no file.
     """
     output_dir = output_dir or os.path.join(os.getcwd(), 'output')
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    extension = 'json' if as_json else 'txt'
     groups = group_url_check_results(results)
 
     saved_paths = []
     for category in URL_CHECK_CATEGORIES:
-        filename = f'{OUTPUT_FILENAMES[category]}_{timestamp}.{extension}'
+        if not groups[category]:
+            continue
+        filename = f'{OUTPUT_FILENAMES[category]}_{timestamp}.txt'
         filepath = os.path.join(output_dir, filename)
-        content = format_url_check_results(groups[category], as_json)
+        content = format_url_check_results(groups[category])
         with open(filepath, 'w', encoding='utf-8') as handle:
             handle.write(content)
         saved_paths.append(filepath)

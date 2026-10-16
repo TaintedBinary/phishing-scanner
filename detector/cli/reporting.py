@@ -255,53 +255,83 @@ def sort_results(results):
     return sorted(results, key=_key, reverse=True)
 
 
-def compact_v2(result):
-    """Return the stable JSON representation for the V2 evidence engine.
+# Severities worth surfacing in the brief one-line output.  Weak/context
+# evidence (E0/E1) is noise for a human scanning results.
+BRIEF_SEVERITIES = frozenset({'high', 'medium'})
+BRIEF_MAX_SUSPECTS = 5
 
-    ``score_shadow`` is deliberately retained as a compatibility field; it is
-    not the source of the final verdict.
-    """
+
+def _result_evidence(result):
+    """Evidence list from a live result (v2_evidence) or a saved one (evidence)."""
+    return result.get('v2_evidence') or result.get('evidence') or []
+
+
+def _result_score(result):
+    score = result.get('total_score')
+    if score is None:
+        score = result.get('score_shadow', 0)
+    return score
+
+
+def brief_suspects(result):
+    """Return simplified suspect points: medium+ rules with short detail."""
+    if result.get('blocked'):
+        blocklist = result.get('blocklist') or {}
+        matched = blocklist.get('matched', '')
+        return [f'本地库命中({matched})'] if matched else ['本地库命中']
+
+    suspects = []
+    for item in _result_evidence(result):
+        if item.get('severity') not in BRIEF_SEVERITIES:
+            continue
+        rule_id = item.get('rule_id', '')
+        detail = str(item.get('detail') or '').strip()
+        suspects.append(f'{rule_id}({detail})' if detail else rule_id)
+        if len(suspects) >= BRIEF_MAX_SUSPECTS:
+            break
+    return suspects
+
+
+def brief_filing(result):
+    """Return '主办单位 备案号' from the ICP filing, or ''."""
+    filing_data = result.get('备案信息')
+    if isinstance(filing_data, dict):
+        unit = filing_data.get('主办单位', '')
+        licence = filing_data.get('网站备案号', '')
+        return ' '.join(str(part) for part in (unit, licence) if part)
+
+    icp = result.get('icp_filing') or {}
+    if not icp.get('has_filing'):
+        return ''
+    record = _pick_first_record(icp.get('records', []))
+    unit = record.get('unitName') or record.get('mainUnitName') or ''
+    licence = (record.get('serviceLicence') or record.get('siteLicense')
+               or record.get('serviceLicense') or '')
+    return ' '.join(part for part in (unit, licence) if part)
+
+
+def format_brief_result(result):
+    """One short line per URL: url 判定 置信度 分数 可疑点 备案信息."""
     verdict = result.get('verdict') or RISK_LEVEL_EN.get(
         result.get('risk_level', '未知'), 'UNKNOWN'
     )
-    compact = {
-        'url': result.get('url', ''),
-        'verdict': verdict,
-        'risk_level': result.get('risk_level', '未知'),
-        'confidence': result.get('confidence', 0.0),
-        'engine_version': result.get('engine_version', ''),
-        'score_shadow': result.get('total_score', 0),
-        'evidence_summary': result.get('evidence_summary', {}),
-        'evidence_groups': result.get('evidence_groups', {}),
-        'group_strength': result.get('group_strength', {}),
-        'strong_groups': result.get('strong_groups', []),
-        'evidence': result.get('v2_evidence', []),
-    }
-    for key in ('domain', 'final_url', 'final_domain', 'requested_url',
-                'requested_domain', 'blocked', 'blocklist', 'error'):
-        if result.get(key):
-            compact[key] = result[key]
-    hard_rules = result.get('hard_rules') or []
-    if hard_rules:
-        compact['hard_rules'] = hard_rules
-    if result.get('risk_evidence'):
-        compact['risk_evidence'] = result['risk_evidence']
-    if result.get('dimension_scores'):
-        compact['dimension_scores'] = result['dimension_scores']
-    icp = result.get('icp_filing')
-    if icp and icp.get('has_filing'):
-        record = _pick_first_record(icp.get('records', []))
-        if record:
-            filing = {}
-            unit = record.get('unitName') or record.get('mainUnitName')
-            if unit:
-                filing['主办单位'] = unit
-            licence = (record.get('serviceLicence') or record.get('siteLicense')
-                       or record.get('serviceLicense'))
-            if licence:
-                filing['网站备案号'] = licence
-            if record.get('mainLicence'):
-                filing['主体备案号'] = record['mainLicence']
-            if filing:
-                compact['备案信息'] = filing
-    return compact
+    url = result.get('final_url') or result.get('url', '')
+    parts = [
+        url,
+        f"[{verdict}|{result.get('risk_level', '未知')}]",
+        f"conf={result.get('confidence', 0.0)}",
+        f"score={_result_score(result)}",
+    ]
+    suspects = brief_suspects(result)
+    if suspects:
+        parts.append('可疑点: ' + ', '.join(suspects))
+    filing = brief_filing(result)
+    if filing:
+        parts.append(f'备案: {filing}')
+    if result.get('error'):
+        parts.append(f"error: {result['error']}")
+    return ' '.join(parts)
+
+
+def format_brief_results(results):
+    return '\n'.join(format_brief_result(r) for r in sort_results(results))

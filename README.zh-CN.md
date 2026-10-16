@@ -123,7 +123,7 @@ ICP_SERVICE.fallback_api.api_key
 
 本地 URL 库由 `providers.py` 配置，通常位于项目外部的 `urldb` 目录。缺少该目录时，其他分析仍可运行，但本地黑名单前置分流不会生效。
 
-`URL_DATABASE.subdirs` 同时支持目录和单个文件。如果需要单独指定文件，可以使用 `URL_DATABASE.files`：
+`URL_DATABASE.subdirs` 同时支持目录和单个文件，仅用于扫描时的本地黑名单前置分流。如果需要单独指定文件供 `--build-infra` 派生基础设施知识库使用，可以配置 `URL_DATABASE.files`（相对于 root，也支持绝对路径）：
 
 ### 基础设施知识库
 

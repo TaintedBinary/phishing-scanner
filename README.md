@@ -124,7 +124,7 @@ ICP_SERVICE.fallback_api.api_key
 
 The local URL database is configured in `providers.py` and commonly points to an external `urldb` directory. If it is unavailable, the remaining analyses can still run, but local blocklist routing will not be available.
 
-`URL_DATABASE.subdirs` accepts both directories and individual files. Use `URL_DATABASE.files` when you want to list selected files explicitly:
+`URL_DATABASE.subdirs` accepts both directories and individual files, and feeds the pre-analysis blocklist routing. Use `URL_DATABASE.files` to list selected files (relative to `root`, or absolute) that are used only by `--build-infra` when deriving the infrastructure knowledge base:
 
 
 ### Infrastructure knowledge base
