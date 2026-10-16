@@ -50,11 +50,11 @@ URL_DATABASE = {
     # 是否启用本地网址库前置分流
     "enabled": True,
     # 本地网址库的根目录路径
-    "root": "D:/hr_repositories",
+    "root": "",
     # 网址库子目录列表，相对于 root 路径
     "subdirs": [
-        "urldb/malurl",
-        "urldb/urlcls",
+        "",
+        "",
     ],
 }
 
