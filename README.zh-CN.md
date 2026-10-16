@@ -1,4 +1,4 @@
-﻿# Phishing Scanner
+# Phishing Scanner
 
 钓鱼网址发现与检测工具，支持搜索引擎发现、URL 检测、页面分析、品牌仿冒识别、ICP 备案查询、恶意基础设施关联和基于证据的风险评分。
 
@@ -118,6 +118,12 @@ V2 证据引擎将信号归入以下证据组：
 ```text
 ICP_SERVICE.fallback_api.api_key
 ```
+
+### 本地 URL 库
+
+本地 URL 库由 `providers.py` 配置，通常位于项目外部的 `urldb` 目录。缺少该目录时，其他分析仍可运行，但本地黑名单前置分流不会生效。
+
+`URL_DATABASE.subdirs` 同时支持目录和单个文件。如果需要单独指定文件，可以使用 `URL_DATABASE.files`：
 
 ### 基础设施知识库
 

@@ -15,6 +15,8 @@ DEFAULT_URL_DATABASE_CONFIG = {
         os.path.join('urldb', 'malurl'),
         os.path.join('urldb', 'urlcls'),
     ],
+    # Optional files can be listed separately from directory paths.
+    'files': [],
 }
 
 
@@ -232,6 +234,7 @@ def load_url_database_config(path):
     section = data.get('url_database', {}) if isinstance(data, dict) else {}
     config = dict(DEFAULT_URL_DATABASE_CONFIG)
     config['subdirs'] = list(DEFAULT_URL_DATABASE_CONFIG['subdirs'])
+    config['files'] = list(DEFAULT_URL_DATABASE_CONFIG.get('files', []))
     if isinstance(section, dict):
         config.update({k: v for k, v in section.items() if v is not None})
     config['enabled'] = bool(config.get('enabled', True))
@@ -244,12 +247,31 @@ def load_url_database_config(path):
         config['paths'] = [resolve_project_path(item) for item in explicit_paths]
         return config
 
-    root = config.get('root', '')
+    root = resolve_project_path(config.get('root', ''))
     subdirs = config.get('subdirs', [])
+    files = config.get('files', [])
     if isinstance(subdirs, str):
         subdirs = [subdirs]
-    root = resolve_project_path(root)
+    if isinstance(files, str):
+        files = [files]
+
+    # Both `subdirs` and `files` may contain relative paths under `root` or
+    # absolute paths. URLBlocklist handles either a directory or a file.
+    configured_paths = list(subdirs or []) + list(files or [])
+    paths = []
+    seen = set()
+    for item in configured_paths:
+        item = str(item or '').strip()
+        if not item:
+            continue
+        resolved = item if os.path.isabs(item) else os.path.join(root, item)
+        resolved = os.path.normpath(resolved)
+        if resolved not in seen:
+            seen.add(resolved)
+            paths.append(resolved)
+
     config['root'] = root
     config['subdirs'] = subdirs
-    config['paths'] = [os.path.join(root, str(item)) for item in subdirs]
+    config['files'] = files
+    config['paths'] = paths
     return config

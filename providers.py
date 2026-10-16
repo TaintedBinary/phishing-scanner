@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 """
 Phishing Scanner 配置文件
 
@@ -50,11 +50,14 @@ URL_DATABASE = {
     # 是否启用本地网址库前置分流
     "enabled": True,
     # 本地网址库的根目录路径
-    "root": "",
-    # 网址库子目录列表，相对于 root 路径
+    "root": " ",
+    # 每一项可以是相对 root 的目录，也可以是文件
     "subdirs": [
-        "",
-        "",
+        " ",
+    ],
+    # 需要单独指定的文件，相对于 root；也支持绝对路径
+    "files": [
+        # "malurl/selected-list.txt",
     ],
 }
 
@@ -189,3 +192,4 @@ PROVIDERS = {
     "infrastructure": INFRASTRUCTURE,
     "logo": LOGO,
 }
+

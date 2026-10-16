@@ -120,6 +120,13 @@ The project supports a local ICP lookup service and can use the 4759.cn API as a
 ICP_SERVICE.fallback_api.api_key
 ```
 
+### Local URL database
+
+The local URL database is configured in `providers.py` and commonly points to an external `urldb` directory. If it is unavailable, the remaining analyses can still run, but local blocklist routing will not be available.
+
+`URL_DATABASE.subdirs` accepts both directories and individual files. Use `URL_DATABASE.files` when you want to list selected files explicitly:
+
+
 ### Infrastructure knowledge base
 
 Build or update the infrastructure knowledge base with:
